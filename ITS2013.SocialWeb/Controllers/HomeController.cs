@@ -6,7 +6,7 @@ using System.Web.Mvc;
 
 namespace ITS2013.SocialWeb.Controllers
 {
-    public class HomeController : Controller
+    public class HomeController : FacebookController
     {
         public ActionResult Index()
         {
