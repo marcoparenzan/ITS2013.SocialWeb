@@ -4,6 +4,8 @@ using System.Linq;
 using System.Net;
 using System.Web;
 using System.Web.Mvc;
+using ITS2013.Social;
+using Newtonsoft.Json;
 
 namespace ITS2013.SocialWeb.Controllers
 {
@@ -23,12 +25,83 @@ namespace ITS2013.SocialWeb.Controllers
             return Redirect(url);
         }
 
+        public ContentResult FriendsOfMine()
+        {
+            var social_state = JsonConvert.DeserializeObject<SocialState>(
+                Request.Cookies["social_state"].Value
+            );
+
+            var url = string.Format(
+                "https://graph.facebook.com/me/friends?{0}"
+                , social_state.AccessTokenQuery
+            );
+
+            var client = new WebClient();
+
+            var friends_json = client.DownloadString(url);
+
+            return Content(friends_json, "application/json");
+        }
+
+        public ActionResult Logout()
+        {
+            var url_referrer = Url.Action("Index", "Home");
+
+            try
+            {
+                var social_state = JsonConvert.DeserializeObject<SocialState>(
+                    Request.Cookies["social_state"].Value
+                );
+
+                var url = string.Format(
+                    "https://graph.facebook.com/me/permissions?method=delete&{0}"
+                    , social_state.AccessTokenQuery
+                );
+
+                var client = new WebClient();
+
+                var result_json = client.DownloadString(url);
+            }
+            finally
+            {
+                Response.Cookies["social_state"].Expires = DateTime.Now.AddDays(-1);
+            }
+
+            return Redirect(url_referrer);
+        }
+
+        public FileResult Picture(string id = "me")
+        {
+            var social_state = JsonConvert.DeserializeObject<SocialState>(
+                Request.Cookies["social_state"].Value
+            );
+
+            var client = new WebClient();
+            var url = string.Format(
+                "https://graph.facebook.com/{1}/picture?{0}"
+                , social_state.AccessTokenQuery
+                , id
+            );
+
+            var picture_data = client.DownloadData(url);
+
+            return new FileContentResult(picture_data, "image/png");
+        }
+
         protected override void OnActionExecuting(ActionExecutingContext filterContext)
         {
-            if (Request.QueryString.AllKeys.Contains("code"))
+            if (Request.Cookies.AllKeys.Contains("social_state"))
+            {
+                ViewBag.is_authenticated = true;
+                ViewBag.social_state =
+                    JsonConvert.DeserializeObject<SocialState>(
+                        Request.Cookies["social_state"].Value
+                    );
+            }
+            else if (Request.QueryString.AllKeys.Contains("code"))
             {
                 var request_url = Request.Url.ToString();
-                request_url = request_url.Substring(0, request_url.LastIndexOf("code=")-1);
+                request_url = request_url.Substring(0, request_url.LastIndexOf("code=") - 1);
                 var code = Request.QueryString["code"];
 
                 var url = string.Format("https://graph.facebook.com/oauth/access_token"
@@ -38,7 +111,7 @@ namespace ITS2013.SocialWeb.Controllers
                     + "&code={3}"
                     , "219248301582245"
                     , Url.Encode(request_url)
-                    , "5dbebbcf7ad19f70e8b25946a09d2bce"
+                    , "ee5868e178e023771682a108667da991"
                     , code
                 );
 
@@ -52,7 +125,31 @@ namespace ITS2013.SocialWeb.Controllers
                 var me_json =
                     client.DownloadString(url);
 
+                var social_state = new SocialState
+                {
+                    ClientId = "219248301582245"
+                    ,
+                    AccessTokenQuery = access_token_query
+                    ,
+                    Me = JsonConvert.DeserializeObject<SocialUser>(me_json)
+                };
+
+                Response.AppendCookie(
+                    new HttpCookie(
+                        "social_state"
+                        , JsonConvert.SerializeObject(social_state)
+                    )
+                    {
+                        Expires = DateTime.Now.AddDays(7)
+                    });
+                ViewBag.social_state = social_state;
+                ViewBag.is_authenticated = true;
+
                 Response.Redirect(request_url);
+            }
+            else
+            {
+                ViewBag.is_authenticated = false;
             }
         }
     }

@@ -12,5 +12,10 @@ namespace ITS2013.SocialWeb.Controllers
         {
             return View();
         }
+
+        public ActionResult Friends()
+        {
+            return View();
+        }
     }
 }

@@ -1,0 +1,42 @@
+﻿@{
+    ViewBag.Title = "Friends";
+}
+<table id="friends" class="table">
+    <thead>
+        <tr>
+            <th></th>
+            <th></th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+
+    </tbody>
+</table>
+<script type="text/javascript">
+
+    $(function () {
+
+
+        $.get(
+            '@Url.Action("FriendsOfMine")'
+            , function (response) {
+
+                var table_body = $("#friends tbody");
+
+                $.each(response.data,
+                    function (i, item) {
+                        var html_tr = "<tr>"
+                            + "<td>" + "<img src='@Url.Action("Picture")" + "/" + item.id + "'/>" + "</td>"
+                            + "<td>" + item.name + "</td>"
+                            + "<td>" + "<a href='#' class='btn'>Vai</a>" + "</td>"
+                        + "</tr>";
+                        table_body.append(html_tr);
+                });
+            }
+        );
+
+
+    });
+
+</script>
